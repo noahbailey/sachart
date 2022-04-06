@@ -77,10 +77,6 @@ type Queue struct {
 }
 
 func main() {
-	//Setup command input
-	//width, height := getTtySize()
-	//fmt.Println("Console size: ", width, " x ", height)
-
 	lines := getFile()
 
 	//parse the JSON object
@@ -88,11 +84,6 @@ func main() {
 
 	//Output the formatted chart
 	drawChart(system)
-}
-
-func parseJson(rawJson string) (system System) {
-	json.Unmarshal([]byte(rawJson), &system)
-	return
 }
 
 func getFile() string {
@@ -104,6 +95,11 @@ func getFile() string {
 		log.Fatal(err)
 	}
 	return string(out)
+}
+
+func parseJson(rawJson string) (system System) {
+	json.Unmarshal([]byte(rawJson), &system)
+	return
 }
 
 //Draw a chart for CPU graph
