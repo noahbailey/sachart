@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -35,6 +36,7 @@ type Statistics struct {
 	Cpu       []Cpu `json:"cpu-load"`
 	Memory    Memory
 	Queue     Queue
+	Network   Network
 }
 
 type Timestamp struct {
@@ -46,23 +48,23 @@ type Timestamp struct {
 
 type Cpu struct {
 	Cpu    string
-	User   float32
-	Nice   float32
-	System float32
-	Iowait float32
-	Steal  float32
-	Idle   float32
+	User   float64
+	Nice   float64
+	System float64
+	Iowait float64
+	Steal  float64
+	Idle   float64
 }
 
 type Memory struct {
 	Memfree    int
 	Avail      int
 	Memused    int
-	MemusedPct float32 `json:"memused-percent"`
+	MemusedPct float64 `json:"memused-percent"`
 	Buffers    int
 	Cached     int
 	Commit     int
-	CommitPct  float32 `json:"commit-percent"`
+	CommitPct  float64 `json:"commit-percent"`
 	Active     int
 	Inactive   int
 	Dirty      int
@@ -71,25 +73,51 @@ type Memory struct {
 type Queue struct {
 	RunqSz  int     `json:"runq-sz"`
 	PlistSz int     `json:"plist-sz"`
-	Load1   float32 `json:"ldavg-1"`
-	Load5   float32 `json:"ldavg-5"`
-	Load15  float32 `json:"ldavg-15"`
+	Load1   float64 `json:"ldavg-1"`
+	Load5   float64 `json:"ldavg-5"`
+	Load15  float64 `json:"ldavg-15"`
 	Blocked int
 }
 
+type Network struct {
+	NetDev []NetDev `json:"net-dev"`
+}
+
+type NetDev struct {
+	Iface   string
+	Rxpck   float64
+	Txpck   float64
+	Rxkb    float64
+	Txkb    float64
+	Rxcmp   float64
+	Txcmp   float64
+	Rxmcst  float64
+	UtilPct float64 `json:"ifutil-percent"`
+}
+
 func main() {
+	//Command line flags:
+	flagCpu := flag.Bool("cpu", true, "Show CPU/Memory/Load graph")
+	flagNet := flag.Bool("net", false, "Show Network/IO graph")
+	flag.Parse()
+
+	//Get data from sadf
 	lines := getFile()
 
 	//parse the JSON object
 	system := parseJson(lines)
 
 	//Output the formatted chart
-	drawCpuMemLoadChart(system)
+	if *flagNet == true {
+		drawNetChart(system)
+	} else if *flagCpu == true {
+		drawCpuMemLoadChart(system)
+	}
 }
 
 func getFile() string {
 	// Get CPU&Memory stats in JSON format:
-	cmd := exec.Command("sadf", "-j", "--", "-r", "-u", "-q")
+	cmd := exec.Command("sadf", "-j", "--", "-r", "-u", "-q", "-n", "DEV")
 	cmd.Stdin = os.Stdin
 	out, err := cmd.Output()
 	if err != nil {
@@ -122,7 +150,7 @@ func drawCpuMemLoadChart(sys System) {
 		memUsd := int(val.Memory.MemusedPct) / 4
 		memSpace := 25 - memUsd
 
-		loadPerCore := val.Queue.Load5 / float32(numCores())
+		loadPerCore := val.Queue.Load5 / float64(numCores())
 		load5 := int(loadPerCore * 10)
 
 		barCpuSys := strings.Repeat("@", cpuSys)
@@ -135,6 +163,54 @@ func drawCpuMemLoadChart(sys System) {
 
 		fmt.Println(val.Timestamp.Time + " |\033[31m" + barCpuSys + "\033[32m" + barCpuUsr + "\033[0m" +
 			barCpuSpace + " |" + "\033[33m" + barMem + "\033[0m" + barMemSpace + " |\033[34m" + barLoad5 + "\033[0m")
+	}
+}
+
+func drawNetChart(sys System) {
+	//Determine the "peak" values first:
+	highestTx := 0.0
+	highestRx := 0.0
+	for _, val := range sys.Sysstat.Hosts[0].Statistics {
+		for _, iface := range val.Network.NetDev {
+			if iface.Txkb > highestTx {
+				highestTx = iface.Txkb
+			}
+			if iface.Rxkb > highestRx {
+				highestRx = iface.Rxkb
+			}
+		}
+	}
+
+	fmt.Println("Max TX (Kb/s): ", highestTx, " Max RX (Kb/s): ", highestRx)
+
+	fmt.Println("TIME     | DOWNLOAD                 | UPLOAD                   | IO (RunQ + Blocked)")
+
+	for i, val := range sys.Sysstat.Hosts[0].Statistics {
+		// The first datapoint from "midnight" can contain strange or incorrect data, safer to skip it
+		if i == 0 {
+			continue
+		}
+		//Determine the total throughput on all interfaces...
+		var totalTx float64
+		var totalRx float64
+		for _, iface := range val.Network.NetDev {
+			totalTx += iface.Txkb
+			totalRx += iface.Rxkb
+		}
+
+		//Express the current value as a percent of the highest value:
+		pctRx := int(totalRx / highestRx * 25)
+		pctTx := int(totalTx / highestTx * 25)
+
+		barRx := strings.Repeat("=", (pctRx))
+		spacesRx := strings.Repeat(" ", (25 - pctRx))
+		barTx := strings.Repeat("=", pctTx)
+		spacesTx := strings.Repeat(" ", (25 - pctTx))
+
+		barRq := strings.Repeat("-", val.Queue.RunqSz)
+		barBk := strings.Repeat(">", val.Queue.Blocked)
+
+		fmt.Println(val.Timestamp.Time + " |\033[34m" + barRx + spacesRx + " \033[0m|\033[35m" + barTx + spacesTx + " \033[0m|\033[36m" + barRq + "\033[31m" + barBk + "\033[0m")
 	}
 }
 
