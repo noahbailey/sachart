@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 )
 
@@ -115,7 +116,8 @@ func drawChart(sys System) {
 		memUsd := int(val.Memory.MemusedPct) / 4
 		memSpace := 25 - memUsd
 
-		load5 := int(val.Queue.Load5 * 10)
+		loadPerCore := val.Queue.Load5 / float32(numCores())
+		load5 := int(loadPerCore * 10)
 
 		barCpuSys := strings.Repeat("@", cpuSys)
 		barCpuUsr := strings.Repeat("#", cpuUsr)
@@ -126,6 +128,11 @@ func drawChart(sys System) {
 		barLoad5 := strings.Repeat("|", load5)
 
 		fmt.Println(val.Timestamp.Time + " |\033[31m" + barCpuSys + "\033[32m" + barCpuUsr + "\033[0m" +
-			barCpuSpace + " |" + "\033[33m" + barMem + "\033[0m" + barMemSpace + " | \033[34m" + barLoad5 + "\033[0m")
+			barCpuSpace + " |" + "\033[33m" + barMem + "\033[0m" + barMemSpace + " |\033[34m" + barLoad5 + "\033[0m")
 	}
+}
+
+func numCores() int {
+	cores := runtime.NumCPU()
+	return cores
 }
