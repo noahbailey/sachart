@@ -84,7 +84,7 @@ func main() {
 	system := parseJson(lines)
 
 	//Output the formatted chart
-	drawChart(system)
+	drawCpuMemLoadChart(system)
 }
 
 func getFile() string {
@@ -104,11 +104,17 @@ func parseJson(rawJson string) (system System) {
 }
 
 //Draw a chart for CPU graph
-func drawChart(sys System) {
+func drawCpuMemLoadChart(sys System) {
 
 	fmt.Println("TIME     | CPU                      | MEMORY                   | LOAD AVG")
 
-	for _, val := range sys.Sysstat.Hosts[0].Statistics {
+	for i, val := range sys.Sysstat.Hosts[0].Statistics {
+
+		// The first datapoint from "midnight" can contain strange or incorrect data, safer to skip it
+		if i == 0 {
+			continue
+		}
+
 		cpuSys := int(val.Cpu[0].System) / 4
 		cpuUsr := int(val.Cpu[0].User) / 4
 		cpuSpace := 25 - cpuSys - cpuUsr
