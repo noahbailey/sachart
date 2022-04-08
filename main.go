@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 )
 
@@ -99,10 +100,11 @@ func main() {
 	//Command line flags:
 	flagCpu := flag.Bool("cpu", true, "Show CPU/Memory/Load graph")
 	flagNet := flag.Bool("net", false, "Show Network/IO graph")
+	flagDays := flag.Int("days", 0, "Show data from previous days")
 	flag.Parse()
 
 	//Get data from sadf
-	lines := getFile()
+	lines := getFile(*flagDays)
 
 	//parse the JSON object
 	system := parseJson(lines)
@@ -115,9 +117,10 @@ func main() {
 	}
 }
 
-func getFile() string {
+func getFile(pastDays int) string {
+	strPastDays := "-" + strconv.Itoa(pastDays)
 	// Get CPU&Memory stats in JSON format:
-	cmd := exec.Command("sadf", "-j", "--", "-r", "-u", "-q", "-n", "DEV")
+	cmd := exec.Command("sadf", "-j", "--", "-r", "-u", "-q", "-n", "DEV", strPastDays)
 	cmd.Stdin = os.Stdin
 	out, err := cmd.Output()
 	if err != nil {
