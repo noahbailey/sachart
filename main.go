@@ -173,25 +173,7 @@ func drawCpuMemLoadChart(sys System) {
 
 func drawNetChart(sys System) {
 	//Determine the "peak" values first:
-	highestTx := 0.0
-	highestRx := 0.0
-
-	//For each time bucket, calculate the total throughput on all interfaces
-	//	The highestTx/Rx variables should be the same as the highest throughput seen
-	for _, val := range sys.Sysstat.Hosts[0].Statistics {
-		var totalTx float64
-		var totalRx float64
-		for _, iface := range val.Network.NetDev {
-			totalTx += iface.Txkb
-			totalRx += iface.Rxkb
-		}
-		if totalTx > highestTx {
-			highestTx = totalTx
-		}
-		if totalRx > highestRx {
-			highestRx = totalRx
-		}
-	}
+	highestTx, highestRx := getHighestNetThroughput(sys)
 
 	//Show a header with net throughput info:
 	fmt.Println("Max TX (Kb/s): ", highestTx, " Max RX (Kb/s): ", highestRx)
@@ -224,4 +206,24 @@ func drawNetChart(sys System) {
 
 		fmt.Println(val.Timestamp.Time + " |\033[34m" + barRx + spacesRx + " \033[0m|\033[35m" + barTx + spacesTx + " \033[0m|\033[36m" + barRq + "\033[31m" + barBk + "\033[0m")
 	}
+}
+
+//For each time bucket, calculate the total throughput on all interfaces
+//	The highestTx/Rx variables should be the same as the highest throughput seen
+func getHighestNetThroughput(sys System) (highestTx float64, highestRx float64) {
+	for _, val := range sys.Sysstat.Hosts[0].Statistics {
+		var totalTx float64
+		var totalRx float64
+		for _, iface := range val.Network.NetDev {
+			totalTx += iface.Txkb
+			totalRx += iface.Rxkb
+		}
+		if totalTx > highestTx {
+			highestTx = totalTx
+		}
+		if totalRx > highestRx {
+			highestRx = totalRx
+		}
+	}
+	return
 }
