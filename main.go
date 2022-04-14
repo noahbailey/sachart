@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type System struct {
@@ -139,6 +140,17 @@ func parseJson(rawJson string) (system System) {
 	return
 }
 
+func parseDate(timeUtc string) string {
+	t, err := time.ParseInLocation("15:04:05", timeUtc, time.UTC)
+	if err != nil {
+		log.Panic(err)
+	}
+	_, offset := time.Now().Zone()
+	offsetDuration := time.Duration(offset) * time.Second
+	localTime := t.Add(offsetDuration).Format("15:04:05")
+	return localTime
+}
+
 //Draw a chart for CPU graph
 func drawCpuMemLoadChart(sys System) {
 
@@ -150,6 +162,9 @@ func drawCpuMemLoadChart(sys System) {
 		if i == 0 {
 			continue
 		}
+
+		//Convert timestamp to localtime
+		localTime := parseDate(val.Timestamp.Time)
 
 		cpuSys := int(val.Cpu[0].System) / 4
 		cpuUsr := int(val.Cpu[0].User) / 4
@@ -169,7 +184,7 @@ func drawCpuMemLoadChart(sys System) {
 
 		barLoad5 := strings.Repeat("|", load5)
 
-		fmt.Println(val.Timestamp.Time + " |\033[31m" + barCpuSys + "\033[32m" + barCpuUsr + "\033[0m" +
+		fmt.Println(localTime + " |\033[31m" + barCpuSys + "\033[32m" + barCpuUsr + "\033[0m" +
 			barCpuSpace + " |" + "\033[33m" + barMem + "\033[0m" + barMemSpace + " |\033[34m" + barLoad5 + "\033[0m")
 	}
 }
@@ -187,6 +202,10 @@ func drawNetChart(sys System) {
 		if i == 0 {
 			continue
 		}
+
+		//Convert timestamp to localtime
+		localTime := parseDate(val.Timestamp.Time)
+
 		//Determine the total throughput on all interfaces...
 		var totalTx float64
 		var totalRx float64
@@ -207,7 +226,7 @@ func drawNetChart(sys System) {
 		barRq := strings.Repeat("-", val.Queue.RunqSz)
 		barBk := strings.Repeat(">", val.Queue.Blocked)
 
-		fmt.Println(val.Timestamp.Time + " |\033[34m" + barRx + spacesRx + " \033[0m|\033[35m" + barTx + spacesTx + " \033[0m|\033[36m" + barRq + "\033[31m" + barBk + "\033[0m")
+		fmt.Println(localTime + " |\033[34m" + barRx + spacesRx + " \033[0m|\033[35m" + barTx + spacesTx + " \033[0m|\033[36m" + barRq + "\033[31m" + barBk + "\033[0m")
 	}
 }
 
