@@ -1,11 +1,7 @@
 package main
 
 import (
-	"log"
-	"os"
-	"os/exec"
 	"runtime"
-	"strconv"
 )
 
 //Just returns the number of cores/threads on the system, that is all.
@@ -13,7 +9,6 @@ func numCores() int {
 	cores := runtime.NumCPU()
 	return cores
 }
-
 
 //For each time bucket, calculate the total throughput on all interfaces
 //	The highestTx/Rx variables should be the same as the highest throughput seen

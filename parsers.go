@@ -1,9 +1,12 @@
-package main 
+package main
 
 import (
-	"time"
 	"encoding/json"
 	"log"
+	"os"
+	"os/exec"
+	"strconv"
+	"time"
 )
 
 //Captures the output of the `sadf` command
